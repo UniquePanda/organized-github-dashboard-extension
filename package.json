@@ -49,5 +49,8 @@
                 "src": "./src/popup/**/*.js"
             }
         ]
+    },
+    "dependencies": {
+        "@octokit/rest": "^19.0.13"
     }
 }
