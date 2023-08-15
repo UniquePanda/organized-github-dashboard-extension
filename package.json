@@ -48,7 +48,8 @@
                 "name": "popup",
                 "src": "./src/popup/**/*.js"
             }
-        ]
+        ],
+        "locales_list": ["en","de"]
     },
     "dependencies": {
         "@octokit/rest": "^19.0.13"
