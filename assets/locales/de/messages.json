@@ -1,38 +1,5 @@
 {
-    "appName": {
-        "message": "Organisiertes GitHub Dashboard"
-    },
-    "appShortName": {
-        "message": "Organisiertes GitHub Dashboard"
-    },
     "appDescription": {
         "message": "Organisiere ganz einfach dein GitHub Dashboard, um nur die relevanten Informationen zu sehen."
-    },
-    "errorWhileLoadingData": {
-        "message": "Beim Laden der Daten ist ein Fehler aufgetreten."
-    },
-    "loadingMessage": {
-        "message": "Lädt ..."
-    },
-    "noActivityFoundMessage": {
-        "message": "Keine Aktivitäten gefunden."
-    },
-    "settingsLabel": {
-        "message": "Organisiertes Dashboard Einstellungen"
-    },
-    "tokenInputLabel": {
-        "message": "Access Token"
-    },
-    "tokenInputButtonSubmitText": {
-        "message": "Ok"
-    },
-    "tokenInputButtonResetText": {
-        "message": "Reset"
-    },
-    "tokenNeededHint": {
-        "message": "Bitte füge einen GitHub access token mit \"repo\" scope hinzu."
-    },
-    "repoFeedLabel": {
-        "message": "Zeige feed für Repos"
     }
 }

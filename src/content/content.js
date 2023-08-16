@@ -208,10 +208,8 @@ function injectNewFeed() {
         selectedRepos.forEach(selectedRepo => {
             console.debug('loading data for repo ' + selectedRepo.name);
 
-            // For some reason GitHub doesn't consider issue events (like "added label" or "assigned user") as normal
-            // repository events, so they need to be fecthed additionally.
             const allRepoEventsPromise = new Promise((resolve, reject) => {
-                const repoEventsReponses = {
+                const repoEventsResponses = {
                     repoEvents: null,
                     repoIssueEvents: null,
                 };
@@ -220,15 +218,17 @@ function injectNewFeed() {
                     repo: selectedRepo.name,
                 })
                     .then((repoEventsData) => {
-                        repoEventsReponses.repoEvents = repoEventsData;
+                        repoEventsResponses.repoEvents = repoEventsData;
 
+                        // For some reason GitHub doesn't consider some issue events (like "added label" or
+                        // "assigned user") as normal repository events, so they need to be fetched additionally.
                         octokit.rest.issues.listEventsForRepo({
                             owner: selectedRepo.owner,
                             repo: selectedRepo.name,
                         })
                             .then((repoIssueEventsData) => {
-                                repoEventsReponses.repoIssueEvents = repoIssueEventsData;
-                                resolve(repoEventsReponses);
+                                repoEventsResponses.repoIssueEvents = repoIssueEventsData;
+                                resolve(repoEventsResponses);
                             })
                             .catch((error) => reject(error));
                     })
@@ -412,7 +412,7 @@ function injectNewFeed() {
 
                         dataDivsContainer.appendChild(dataDiv);
                     });
-                };
+                }
 
                 repoFeedDivs.forEach((repoFeedDiv) => feedDataContainerElement.appendChild(repoFeedDiv));
                 resolve();
@@ -440,10 +440,10 @@ function getEventActionText(eventData) {
             return 'forked this repo as';
         case 'GollumEvent':
             return 'modified wiki page';
-        case 'IssueCommentEvent':
+        case 'IssueCommentEvent': {
             // For some reason, comments on pull requests might trigger an IssueCommentEvent but will add an additional
             // pull_request object to the issue object.
-            const issueCommentType = eventData.payload.issue.pull_request ? ' pull request' : 'issue';
+            const issueCommentType = eventData.payload.issue.pull_request ? 'pull request' : 'issue';
 
             switch (eventData.payload.action) {
                 case 'created':
@@ -455,7 +455,9 @@ function getEventActionText(eventData) {
                 default:
                     return 'did something with a comment on ' + issueCommentType;
             }
+        }
         case 'IssuesEvent':
+            // Note: PRs sometimes are also handled via IssueEvent by GitHub.
             switch (eventData.payload.action) {
                 case 'opened':
                     return 'opened issue';
@@ -474,9 +476,9 @@ function getEventActionText(eventData) {
                 case 'unlabeled':
                     return 'removed label from issue';
                 case 'merged':
-                    return 'merged pull request'; // PRs sometimes are handled via IssueEvent by GitHub.
+                    return 'merged pull request';
                 case 'ready_for_review':
-                    return 'marked pull request'; // PRs sometimes are handled via IssueEvent by GitHub.
+                    return 'marked pull request';
                 default:
                     return 'did something with issue'
             }
@@ -511,8 +513,6 @@ function getEventActionText(eventData) {
                     return 'removed request for review from pull request';
                 case 'labeled':
                     return 'added label to pull request';
-                case 'unlabeled':
-                    return 'removed label from pull request';
                 case 'unlabeled':
                     return 'removed label from pull request';
                 case 'synchronized':
@@ -610,19 +610,20 @@ function getEventActionTargetElements(eventData, repoFullName) {
             }
 
             return [eventActionSpan];
-        case 'ForkEvent':
+        case 'ForkEvent': {
             const forkedRepoFullName = eventData.payload.full_name;
             eventActionAnchor.href = gitHubBaseUrl + forkedRepoFullName;
             eventActionAnchor.appendChild(document.createTextNode(forkedRepoFullName));
             return [eventActionAnchor];
-        case 'GollumEvent': // Gollum is the software that is used to run wikis on GitHub.
+        }
+        case 'GollumEvent': { // Gollum is the software that is used to run wikis on GitHub.
             if (!eventData.payload.pages || eventData.payload.pages.length == 0) {
                 eventActionSpan.appendChild(document.createTextNode('(wiki pages not found)'));
                 return [eventActionSpan];
             }
 
             const wikiPageEventActionTarget = [];
-            for (let wikiPageIndex = 0; wikiPageIndex < eventData.payload.pages.length; wikiPageIndex++) {
+            for (let wikiPageIndex = 0;wikiPageIndex < eventData.payload.pages.length;wikiPageIndex++) {
                 const wikiPage = eventData.payload.pages[wikiPageIndex];
 
                 const wikiPageEventActionAnchor = document.createElement('a');
@@ -640,6 +641,7 @@ function getEventActionTargetElements(eventData, repoFullName) {
             }
 
             return wikiPageEventActionTarget;
+        }
         case 'IssueCommentEvent':
             eventActionAnchor.href = eventData.payload.comment.html_url;
             eventActionAnchor.setAttribute('title', eventData.payload.issue.title);
@@ -662,7 +664,7 @@ function getEventActionTargetElements(eventData, repoFullName) {
                 case 'unlabeled':
                 case 'merged': // Only for PRs
                     return [eventActionAnchor];
-                case 'assigned':
+                case 'assigned': {
                     const toUserSpan = document.createElement('span');
                     toUserSpan.appendChild(document.createTextNode(' to user '));
 
@@ -677,7 +679,8 @@ function getEventActionTargetElements(eventData, repoFullName) {
                     assignedUserAnchor.appendChild(document.createTextNode(eventData.payload.assignee.login));
 
                     return [eventActionAnchor, toUserSpan, assignedUserAnchor];
-                case 'unassigned':
+                }
+                case 'unassigned': {
                     const fromUserSpan = document.createElement('span');
                     fromUserSpan.appendChild(document.createTextNode(' from user '));
 
@@ -692,10 +695,12 @@ function getEventActionTargetElements(eventData, repoFullName) {
                     unassignedUserAnchor.appendChild(document.createTextNode(eventData.payload.assignee.login));
 
                     return [eventActionAnchor, fromUserSpan, unassignedUserAnchor];
-                case 'ready_for_review':
+                }
+                case 'ready_for_review': {
                     const additionalTextSpan = document.createElement('span');
                     additionalTextSpan.appendChild(document.createTextNode(' as ready for review'));
                     return [eventActionAnchor, additionalTextSpan];
+                }
                 default:
                     return [eventActionAnchor];
             }
@@ -734,7 +739,7 @@ function getEventActionTargetElements(eventData, repoFullName) {
                 case 'unlabeled':
                 case 'synchronized':
                     return [eventActionAnchor];
-                case 'assigned':
+                case 'assigned': {
                     const toUserSpan = document.createElement('span');
                     toUserSpan.appendChild(document.createTextNode(' to user '));
 
@@ -749,8 +754,23 @@ function getEventActionTargetElements(eventData, repoFullName) {
                     assignedUserAnchor.appendChild(document.createTextNode(eventData.payload.assignee.login));
 
                     return [eventActionAnchor, toUserSpan, assignedUserAnchor];
-                case 'unassigned':
-                    return [eventActionAnchor];
+                }
+                case 'unassigned': {
+                    const fromUserSpan = document.createElement('span');
+                    fromUserSpan.appendChild(document.createTextNode(' from user '));
+
+                    const unassignedUserAnchor = document.createElement('a');
+                    unassignedUserAnchor.classList.add('Link--primary');
+                    unassignedUserAnchor.setAttribute('data-hovercard-type', 'user');
+                    unassignedUserAnchor.setAttribute('data-hovercard-url', '/users/' + eventData.payload.assignee.login + '/hovercard');
+                    unassignedUserAnchor.setAttribute('data-octo-clicked', 'hovercard-link-clicked');
+                    unassignedUserAnchor.setAttribute('data-octo-dimensions', 'link_type:self');
+                    unassignedUserAnchor.href = eventData.payload.assignee.html_url;
+                    unassignedUserAnchor.setAttribute('title', eventData.payload.assignee.login);
+                    unassignedUserAnchor.appendChild(document.createTextNode(eventData.payload.assignee.login));
+
+                    return [eventActionAnchor, fromUserSpan, unassignedUserAnchor];
+                }
                 default:
                     return [eventActionAnchor];
             }
@@ -760,16 +780,21 @@ function getEventActionTargetElements(eventData, repoFullName) {
             eventActionAnchor.setAttribute('title', eventData.payload.pull_request.title);
             eventActionAnchor.appendChild(document.createTextNode('#' + eventData.payload.pull_request.number));
             return [eventActionAnchor];
-        case 'PullRequestReviewThreadEvent':
-            switch (eventData.payload.action) {
-                case 'resolved':
-                    return [eventActionAnchor];
-                case 'unresolved':
-                    return [eventActionAnchor];
-                default:
-                    return [eventActionAnchor];
-            }
+        case 'PullRequestReviewThreadEvent': {
+            const prAnchor = document.createElement('a');
+            prAnchor.classList.add('Link--primary');
+            prAnchor.href = eventData.payload.pull_request.html_url;
+            prAnchor.setAttribute('title', eventData.payload.pull_request.title);
+            prAnchor.appendChild(document.createTextNode('#' + eventData.payload.number));
+
+            const onPrSpan = document.createElement('span');
+            onPrSpan.appendChild(document.createTextNode(' on pull request '));
+
+            // TODO: I was not able to get events for threads so for now the thread object of the event is not used here.
+            return [onPrSpan, prAnchor];
+        }
         case 'PushEvent':
+            console.log(eventData);
             return [eventActionAnchor];
         case 'ReleaseEvent':
             switch (eventData.payload.action) {
